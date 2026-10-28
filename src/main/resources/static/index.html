@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2FA Demo</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="card">
+
+  <!-- 登录视图 -->
+  <section id="view-login">
+    <h1>登录</h1>
+    <p class="hint">演示账号：testuser / password123，admin / admin123</p>
+    <form id="login-form">
+      <label>用户名 <input name="username" autocomplete="username" required></label>
+      <label>密码 <input name="password" type="password" autocomplete="current-password" required></label>
+      <button type="submit">登录</button>
+    </form>
+
+    <div id="step-2fa" class="hidden">
+      <hr>
+      <p class="hint">该账号已启用 <b id="login-2fa-type"></b>，请输入手机验证器中的 6 位码</p>
+      <form id="verify-form">
+        <!-- autocomplete 标准属性：告诉浏览器这是 OTP，可自动填充 -->
+        <input id="verify-code" inputmode="numeric" autocomplete="one-time-code"
+               pattern="\d{6}" maxlength="6" placeholder="6 位验证码" required>
+        <button type="submit">验证</button>
+      </form>
+    </div>
+    <p id="login-error" class="error"></p>
+  </section>
+
+  <!-- 个人页视图 -->
+  <section id="view-profile" class="hidden">
+    <header class="profile-header">
+      <div>
+        <h1 id="profile-name"></h1>
+        <p class="hint" id="profile-username"></p>
+      </div>
+      <button id="btn-logout" class="secondary">退出</button>
+    </header>
+
+    <div class="panel">
+      <h2>两步验证（2FA）</h2>
+      <p>当前状态：<b id="2fa-status"></b></p>
+
+      <!-- 未启用：设置流程 -->
+      <div id="2fa-setup">
+        <div class="type-picker">
+          <label><input type="radio" name="2fa-type" value="TOTP" checked> TOTP（时间型，每 30 秒变）</label>
+          <label><input type="radio" name="2fa-type" value="HOTP"> HOTP（计数型，按次推进）</label>
+        </div>
+        <button id="btn-gen-qr">生成二维码</button>
+
+        <div id="setup-result" class="hidden">
+          <p class="hint">用手机上的验证器 App（Google/Microsoft Authenticator、Apple Passwords 等）扫码，
+             或复制下方 URI 手动添加：</p>
+          <img id="qr-img" alt="otpauth QR">
+          <div class="uri-row">
+            <input id="otpauth-uri" readonly>
+            <button id="btn-copy-uri" type="button">复制 URI</button>
+          </div>
+          <div class="uri-row">
+            <input id="enable-code" inputmode="numeric" autocomplete="one-time-code"
+                   pattern="\d{6}" maxlength="6" placeholder="输入 App 显示的 6 位码完成绑定">
+            <button id="btn-enable">启用 2FA</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 已启用：信息与禁用 -->
+      <div id="2fa-enabled-info" class="hidden">
+        <p id="2fa-detail"></p>
+        <p class="hint" for="hotp-hint" id="hotp-hint" style="display:none">
+          HOTP 每次验证后用掉的码会作废，服务器 counter 自动对齐；多按几次手机验证器也没关系（look-ahead 窗口 10）。</p>
+        <button id="btn-disable" class="danger">禁用 2FA</button>
+      </div>
+    </div>
+    <p id="profile-error" class="error"></p>
+  </section>
+
+</main>
+<script src="app.js"></script>
+</body>
+</html>

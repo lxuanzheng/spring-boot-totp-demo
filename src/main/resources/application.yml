@@ -1,9 +1,19 @@
 server:
-  port: 8080
+  port: 8081   # 本机 8080 被本地 nginx 常驻占用，改用 8081
 
 spring:
   application:
     name: spring-boot-totp-demo
+
+# 演示用户（明文密码仅本地演示用；2FA 密钥另存 data/2fa-secrets.json）
+app:
+  demo-users:
+    - username: testuser
+      password: password123
+      display-name: 测试用户
+    - username: admin
+      password: admin123
+      display-name: 管理员
 
 # Swagger / OpenAPI 配置
 springdoc:

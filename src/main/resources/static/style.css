@@ -1,0 +1,69 @@
+* { box-sizing: border-box; margin: 0; }
+body {
+  font-family: -apple-system, "PingFang SC", sans-serif;
+  background: #f0f1f5;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.card {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.08);
+  padding: 32px 36px;
+  width: 460px;
+  max-width: 92vw;
+}
+h1 { font-size: 22px; margin-bottom: 6px; }
+h2 { font-size: 16px; margin-bottom: 10px; }
+.hint { font-size: 12px; color: #8a8f99; margin: 4px 0 12px; }
+.hidden { display: none !important; }
+.error { color: #d93025; font-size: 13px; margin-top: 10px; min-height: 18px; }
+
+form label { display: block; font-size: 13px; color: #555; margin: 12px 0 4px; }
+input {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid #d5d9e0;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-top: 4px;
+}
+input:focus { outline: 2px solid #4a86e8; border-color: transparent; }
+
+button {
+  background: #1a73e8;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 18px;
+  font-size: 14px;
+  cursor: pointer;
+  margin-top: 14px;
+}
+button:hover { background: #1765cc; }
+button.secondary { background: #eceef1; color: #333; }
+button.secondary:hover { background: #e0e3e8; }
+button.danger { background: #d93025; }
+button.danger:hover { background: #b9261c; }
+
+hr { border: none; border-top: 1px solid #eceef1; margin: 18px 0; }
+
+.profile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+.profile-header button { margin-top: 0; }
+
+.panel { background: #f8f9fb; border-radius: 10px; padding: 18px; }
+.type-picker { display: flex; gap: 16px; margin: 10px 0 4px; flex-wrap: wrap; }
+.type-picker label { font-size: 13px; display: flex; align-items: center; gap: 6px; }
+.type-picker input { width: auto; margin: 0; }
+
+#qr-img { display: block; width: 180px; height: 180px; margin: 10px auto; border-radius: 8px; }
+.uri-row { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
+.uri-row input { flex: 1; font-family: ui-monospace, monospace; font-size: 12px; }
+.uri-row button { margin-top: 0; white-space: nowrap; }

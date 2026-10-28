@@ -1,121 +1,74 @@
-# Spring Boot TOTP 双因素认证 Demo
+# Spring Boot 2FA 双因素认证 Demo
 
-## 项目说明
-
-一个使用 TOTP（Time-based One-Time Password）实现的 2FA（双因素认证）Demo，基于 Google Authenticator / Microsoft Authenticator 兼容算法。
+TOTP（RFC 6238）+ HOTP（RFC 4226）双协议 2FA 演示，带完整 Web 前端（登录/二次验证/个人页设置）。
+算法与 Google/Microsoft Authenticator、Apple Passwords 兼容。
 
 ## 快速开始
 
-### 1. 安装依赖
-
-```bash
-cd /Users/lixiuyuan/Codes/spring-boot-totp-demo
-mvn clean install
-```
-
-### 2. 启动应用
-
 ```bash
 mvn spring-boot:run
+# 浏览器打开 http://localhost:8081
 ```
 
-### 3. 使用 API 测试
+> 端口说明：`application.yml` 配置为 8081——本机 8080 被本地 nginx 常驻占用。
 
-#### 步骤一：登录获取 secret
+## 演示账号（application.yml 配置）
 
-```bash
-curl -X POST 'http://localhost:8080/api/totp/login?username=testuser&password=password123'
-```
+| 用户名 | 密码 | 显示名 |
+|--------|------|--------|
+| testuser | password123 | 测试用户 |
+| admin | admin123 | 管理员 |
 
-返回示例：
-```json
-{
-  "code": 200,
-  "message": "登录成功",
-  "data": {
-    "username": "testuser",
-    "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"
-  }
-}
-```
+在 `app.demo-users` 下增删用户即可。2FA 密钥单独持久化在 `./data/2fa-secrets.json`（重启不丢）。
 
-#### 步骤二：获取 otpauth URI（二维码链接）
+## 功能
 
-```bash
-curl http://localhost:8080/api/totp/otpauth/testuser
-```
-
-返回示例：
-```json
-{
-  "code": 200,
-  "message": "二维码 URI",
-  "data": "otpauth://totp/MyApp:testuser?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ&issuer=MyApp&algorithm=SHA1&digits=6&period=30"
-}
-```
-
-将上述 URI 作为二维码内容，用 Google Authenticator 或 Apple Passwords 扫码即可添加。
-
-#### 步骤三：生成并验证验证码
-
-```bash
-curl -X POST 'http://localhost:8080/api/totp/verify?username=testuser&code=<6位验证码>'
-```
-
-返回示例：
-```json
-{
-  "code": 200,
-  "message": "验证码正确"
-}
-```
-
-#### 步骤四：获取二维码图片
-
-```bash
-curl -o qr.png http://localhost:8080/api/qr/testuser
-```
-
-返回 Base64 PNG 图片，可直接嵌入 HTML。
-
-### 4. 完整流程伪代码
-
-```
-前端打开登录页
-  ↓
-输入用户名密码 → POST /api/totp/login
-  ↓
-服务端返回 { secret: "GEZ..." }
-  ↓
-前端调用 GET /api/qr/{username} 获取二维码
-  ↓
-用户手机扫码绑定 secret
-  ↓
-用户在验证码输入框输出生成的 6 位码 → POST /api/totp/verify
-  ↓
-服务端验证通过 → 返回 token（实际项目中可签 JWT）
-```
+- 登录 / 退出；未启用 2FA 直接进，已启用则进入"密码 + 6 位码"两步验证
+- 个人页显示当前用户信息（显示名 + 用户名）
+- 2FA 设置：**TOTP / HOTP 二选一** → 生成二维码（手机验证器 App 扫码）+ **otpauth URI 复制按钮** → 输入 App 显示的码完成绑定
+- 已启用后可查看类型与状态、禁用
+- 切换类型时二维码/URI 自动按新类型重新生成
 
 ## API 一览
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/api/totp/login` | 用户登录（同时生成或检查 TOTP secret） |
-| GET  | `/api/totp/otpauth/{username}` | 获取 otpauth URI 用于二维码 |
-| GET  | `/api/qr/{username}` | 获取 Base64 编码的二维码图片 |
-| POST | `/api/totp/verify` | 验证验证码（支持容错 ±1 个周期） |
-| POST | `/api/totp/reset/{username}` | 重置用户 TOTP secret |
+| POST | `/api/auth/login` | 账号密码登录；已启用 2FA 时返回 challengeId |
+| POST | `/api/auth/login/2fa` | 第二步：验证码 + challengeId 完成登录 |
+| POST | `/api/auth/logout` | 退出 |
+| GET | `/api/auth/me` | 当前用户信息 + 2FA 状态 |
+| GET | `/api/2fa/status` | 2FA 状态 |
+| POST | `/api/2fa/setup` | body: `{type: TOTP\|HOTP}`，返回 secret + otpauthUri（存 session 待验） |
+| GET | `/api/2fa/qr.png?uri=` | 按 URI 生成二维码 PNG |
+| POST | `/api/2fa/enable` | body: `{code}`，验首码后正式绑定 |
+| POST | `/api/2fa/disable` | 禁用 2FA |
 
-## 技术要点
+## 实现要点
 
-- **TOTP 实现**：RFC 6238 标准，HMAC-SHA1 + 30 秒时间分片
-- **Base32 编码**：使用 Apache Commons Codec 解码
-- **防漂移**：验证时允许 ±1 个周期的时间差
-- **二维码**：使用 ZXing 库生成 PNG
+- 用户来自 `application.yml`（`@ConfigurationProperties`），不在代码里写死
+- HOTP(counter=N) ≡ TOTP(时间=N×30s)，`OTPService` 复用 `TotpUtil` 一套 HMAC 计算
+- HOTP 验证用 look-ahead 窗口（10），命中后 counter 对齐并持久化；跳过的码永久作废
+- 2FA 登录挑战为 5 分钟有效的内存 challenge（演示够用；生产应换缓存 + 限流）
+- 前端原生 HTML/JS（`static/`），无构建步骤；验证码输入框带 `autocomplete="one-time-code"`
 
-## 集成到你的项目
+## 工程结构
 
-如果项目需要实际集成到 OMS 等业务系统，主要改动点：
-1. 将内存存储替换为数据库（如 spddb 的 t_sys_user / t_security_token 表）
-2. 在 Controller 中对接业务逻辑：登录成功后签 JWT Token
-3. 删除 Demo 的 `UserService` 和 `Result` 类，替换为业务服务
+```
+Sources 同 v1.0.0（Base32 / SHA1... 见下）
+src/main/java/com/example/totp/
+  config/DemoUserProperties.java   YAML 用户配置注入
+  model/UserAccount.java           演示用户
+  model/TwoFactorConfig.java       2FA 配置(type/secret/counter)
+  service/OTPService.java          TOTP/HOTP 计算 + otpauth URI
+  service/SecretStore.java         2FA 密钥 JSON 文件存储
+  controller/AuthController.java   登录/二次验证/退出/me
+  controller/TwoFactorController.java  setup/qr/enable/disable/status
+  util/{Base32, SHA1→内置, TotpUtil, QRCodeGenerator}
+src/main/resources/static/         index.html / app.js / style.css
+```
+
+## 版本记录
+
+- **v1.1.0**：Web 前端（登录/退出/个人页）、TOTP+HOTP 双协议设置流（二维码 + URI 复制）、
+  用户改 YAML 配置（2 个默认用户）、密钥持久化 data/2fa-secrets.json、端口改 8081
+- **v1.0.0**：纯 API 版 TOTP Demo
