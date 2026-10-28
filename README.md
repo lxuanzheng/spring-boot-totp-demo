@@ -51,6 +51,51 @@ mvn spring-boot:run
 - 2FA 登录挑战为 5 分钟有效的内存 challenge（演示够用；生产应换缓存 + 限流）
 - 前端原生 HTML/JS（`static/`），无构建步骤；验证码输入框带 `autocomplete="one-time-code"`
 
+## 为什么 `hotpCode` 里是 `counter * 30_000L`？
+
+读 `OTPService.hotpCode` 时最容易卡住的一行：
+
+```java
+public String hotpCode(String secret, long counter) {
+    return TotpUtil.generateCode(secret, counter * 30_000L);
+}
+```
+
+**目的：让 `TotpUtil` 内部算出的 counter 恰好等于 HOTP 的第 N 次。这是在复用同一个算法，不是在做时间换算。**
+
+`TotpUtil.generateCode(secret, time)` 的第一步永远是：
+
+```java
+long counter = time / (TIME_STEP * 1000L);   // 即 time / 30_000
+```
+
+它不管传入的是真实时间还是别的什么数，一律除以 30,000 当作"第几格"。所以要得到"第 N 次"的码，只要传一个能让除法结果等于 N 的数，即 `N × 30_000`：
+
+| 想算的 | 需要内部 counter = | 传入的 time |
+|---|---|---|
+| HOTP 第 1 次 | 1 | 30_000 |
+| HOTP 第 52 次 | 52 | 1,560,000 |
+| HOTP 第 N 次 | N | N × 30_000 |
+
+**为什么合法**——这是 RFC 6238 的定义，不是投机取巧：
+
+```
+HOTP:  HMAC(secret, counter)        counter = 用过的次数（存出来的状态）
+TOTP:  HMAC(secret, ⌊time ÷ 30⌋)    counter = 第几个 30 秒（从时间算出来的）
+              ↑ 同一段算法，唯一区别是 counter 的来源
+```
+
+"HOTP 第 N 次"与"落在第 N 格的时间片"生成的是**同一个码**。证据就在本项目的冒烟测试里：
+
+```
+HOTP counter=1 → 287082
+TOTP 6位 t=59  → 287082     （59 ÷ 30 = 1，同格同码）
+```
+
+细节：`30_000` = 30 秒 × 1000（`TotpUtil` 吃毫秒，对应 `System.currentTimeMillis()` 的惯例）；`L` 后缀是 long 字面量，意图明确、避免窄化计算的歧义。
+
+验证端同理：`verifyHOTP` 在窗口 `(counter, counter+10]` 内逐个候选 counter 调 `hotpCode`——每次就是一次独立的 HMAC 计算，等价于 RFC 4226 标准验证流程，没有为此多写一行 SHA1/HMAC 代码。
+
 ## 工程结构
 
 ```
